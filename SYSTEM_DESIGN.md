@@ -28,22 +28,22 @@ Semua kontrak di sini diturunkan dari code (`backend/app/api/*.py`, `backend/app
 
 ## 3. Alur End-to-End
 
-### 3.1 Login dan refresh sesi siswa
+### 3.1 Login, daftar mandiri, dan refresh sesi siswa (ADR-056)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant FE as FE (AuthContext / token.ts)
+    participant FE as FE (AuthContext / auth.service / token.ts)
     participant BE as Backend
     participant DB as Postgres
     participant SA as Supabase Auth
-    Note over FE: Tanpa sesi tersimpan → form login
-    FE->>BE: POST /api/student/auth/login {nis, password}
-    BE->>DB: student_profiles by nis (+ email auth.users)
-    alt bukan tepat 1 profil aktif dengan email
-        BE-->>FE: 401 INVALID_CREDENTIALS
+    Note over FE: Tanpa sesi tersimpan → form login / daftar mandiri
+    alt Masuk
+        FE->>BE: POST /api/student/auth/login {email, password}
+    else Daftar mandiri
+        FE->>BE: POST /api/student/auth/register {full_name, email, phone, password}
     end
-    BE->>SA: password grant (email, password)
+    BE->>SA: password grant / buat akun Supabase Auth
     SA-->>BE: access_token, refresh_token, expires_in
     BE->>BE: verifikasi JWT (JWKS, ES256, iss/aud/exp, leeway 0)<br/>role == "siswa" dan sub == profile.id
     BE-->>FE: 200 {access_token, refresh_token, expires_in, student} (Cache-Control: no-store)
@@ -62,7 +62,7 @@ sequenceDiagram
     end
 ```
 
-Idle > 14 hari menghapus sesi di FE. Beberapa panggilan bersamaan hanya memicu satu refresh.
+Idle > 14 hari menghapus sesi di FE. Beberapa panggilan bersamaan hanya memicu satu refresh. Alur lupa password memakai `POST /api/student/auth/forgot-password {email}` dan logout memberi sinyal *best-effort* ke `POST /api/student/auth/logout`.
 
 ### 3.2 Mengirim pesan chat
 
@@ -90,7 +90,7 @@ sequenceDiagram
     BE->>BE: clean_reply (hapus markdown, maks 2000 char)
     BE->>DB: 1 transaksi: pesan user + jawaban + updated_at (+ judul dari pertanyaan pertama)
     BE-->>FE: 201 {session, user_message, assistant_message, model}
-    FE->>FE: tampilkan teks, putar animasi isyarat, TTS bila aktif
+    FE->>FE: tampilkan teks, putar animasi isyarat + tombol Salin / Sederhanakan / Caption
 ```
 
 ### 3.3 Tanya dari video
@@ -240,15 +240,19 @@ Token siswa ditolak oleh dependensi staf/admin dan sebaliknya.
 
 **`SignSequence`** (`backend/app/modeling/sequence.py`, cermin `ml/src/bisindo/schema.py`): `{frames: Frame[], mirrored: bool, width: int > 0, height: int > 0}`. `Frame = {t_ms: float, hands: Hand[] (0–2, kirim [] bila kosong), pose: [33][3|4] | null}` (key `pose` wajib). `Hand = {landmarks: [21][3], handedness: "Left"|"Right", score: float}`. `t_ms` tidak boleh turun. Semua key wajib walau Modeling punya default.
 
-### 4.3 Siswa
+### 4.3 Siswa (ADR-056)
 
 | Method | Path | Auth | Request | Response | Error |
 |---|---|---|---|---|---|
-| POST | `/api/student/auth/login` | publik | `{nis: str 1–30, password: str 1–1024}` | 200 `{access_token, token_type: "bearer", expires_in, refresh_token, student}` | 422, 401 INVALID_CREDENTIALS, 503 AUTH_UNAVAILABLE |
+| POST | `/api/student/auth/login` | publik | `{email: str, password: str 1–1024}` | 200 `{access_token, token_type: "bearer", expires_in, refresh_token, student}` | 422, 401 INVALID_CREDENTIALS, 503 AUTH_UNAVAILABLE |
+| POST | `/api/student/auth/register` | publik | `{full_name: str, email: str, phone: str, password: str}` | 200/201 sama dengan login | 422, 409 CONFLICT (email sudah terdaftar), 503 AUTH_UNAVAILABLE |
+| POST | `/api/student/auth/forgot-password` | publik | `{email: str}` | 200/204 | 422, 503 AUTH_UNAVAILABLE |
 | POST | `/api/student/auth/refresh` | publik | `{refresh_token: str 1–4096}` | 200 sama dengan login | 422, 401 INVALID_CREDENTIALS, 503 AUTH_UNAVAILABLE |
+| POST | `/api/student/auth/logout` | siswa | | 200/204 (best-effort) | |
 | GET | `/api/student/me` | siswa | | 200 `student` | 401, 403, 503 |
+| PATCH | `/api/student/me` | siswa | `{full_name?, phone?, grade?, class_code?}` | 200 `student` | 401, 403, 422 |
 
-`student = {id, nis, full_name, class_name, grade, avatar_url, institution: {id, name}}`. Semua response di atas memakai `Cache-Control: no-store`. Setiap kegagalan kredensial memakai satu pesan generik.
+`student = {id, email?, phone?, nis?, full_name, class_name?, grade?, class_code?, avatar_url?, institution?: {id, name}}`. Semua response auth memakai `Cache-Control: no-store`. Setiap kegagalan kredensial memakai satu pesan generik.
 
 ### 4.4 Chat (semua `require_student`)
 

@@ -15,9 +15,9 @@ Dokumen ini menjawab *apa* dan *mengapa*. Kontrak API, skema data, dan alur tekn
 
 ## 1. Ringkasan
 
-LUNAR adalah aplikasi belajar *chat-first* untuk siswa Tuli. Halaman utama adalah **Tanya LUNAR**: siswa bertanya dengan mengetik, dengan isyarat BISINDO lewat kamera, atau dengan mengunggah PDF materi dari guru. Jawaban tampil sebagai teks sederhana, suara (TTS), dan animasi isyarat. Video pelajaran bisa ditanyakan per detik: pertanyaan dikirim bersama posisi video sehingga jawaban mengacu ke bagian yang sedang ditonton.
+LUNAR adalah aplikasi belajar *chat-first* untuk siswa Tuli. Halaman utama adalah **Tanya LUNAR**: siswa bertanya dengan mengetik, dengan isyarat BISINDO lewat kamera, atau dengan mengunggah PDF materi dari guru. Jawaban tampil sebagai teks sederhana (dilengkapi tombol **Salin** dan **Sederhanakan**) serta **animasi isyarat** lengkap dengan seekbar dan layar penuh. Konten pembelajaran video bisa ditanyakan per detik: pertanyaan dikirim bersama posisi video sehingga jawaban mengacu ke bagian yang sedang ditonton.
 
-Akun siswa dibuat sekolah dan login memakai NIS. Mode kiosk kelas (siswa ↔ guru di satu perangkat) tetap ada di `/kiosk`, tetapi tidak tampil di menu.
+Siswa dapat mendaftar mandiri dan masuk menggunakan **Email + No. Telp + Password** (dengan bantuan orang tua/guru untuk anak di bawah 13 tahun, ADR-056). Mode kiosk kelas (siswa ↔ guru di satu perangkat) tetap ada di `/kiosk`, tetapi tidak tampil di menu.
 
 ## 2. Sebelum vs Sesudah
 
@@ -55,7 +55,7 @@ Akun siswa dibuat sekolah dan login memakai NIS. Mode kiosk kelas (siswa ↔ gur
 | Guru | Memakai kiosk kelas; kelak mengirim materi ke kelas. | Kiosk tersembunyi; akun guru belum ada (ADR-051 open item 4) |
 | Admin vokabulari | Mengelola frasa dan video referensi. | API admin ada, tanpa UI |
 
-Siswa tidak mendaftar sendiri. Satu akun = satu siswa.
+Satu akun = satu siswa; siswa dapat mendaftar mandiri dengan Email + No. Telp + Password (dengan pendampingan orang tua/guru bagi anak di bawah 13 tahun).
 
 ## 5. Tujuan & Non-Tujuan
 
@@ -70,7 +70,7 @@ Siswa tidak mendaftar sendiri. Satu akun = satu siswa.
 - Bukan pengganti guru atau juru bahasa isyarat.
 - Bukan avatar 3D generatif; animasi kata di luar kosakata adalah gerakan buatan dan **bukan BISINDO**.
 - Bukan OCR: PDF hasil scan/foto ditolak.
-- Tidak ada multi-device session, room code, QR pairing, registrasi mandiri, dashboard B2G.
+- Tidak ada multi-device session, room code, QR pairing, dashboard B2G.
 
 ## 6. Framing yang Wajib
 
@@ -81,21 +81,21 @@ Kalimat resmi produk (ADR-051 D1):
 Konsekuensi:
 - Jangan pernah menulis "AI menerjemahkan BISINDO". Alur sebenarnya adalah *urutan landmark → klasifikasi kosakata tertutup → kata yang sudah ditentukan*.
 - Animasi untuk kata di luar kosakata adalah gerakan prosedural yang dijamin berbeda dari gerakan terlatih (ADR-051 D5). Atas permintaan pemilik produk, UI tidak memberi label khusus, tetapi materi presentasi tidak boleh menyebutnya isyarat BISINDO.
-- Jawaban chatbot dibuat model bahasa dan bisa keliru. UI menulis "LUNAR bisa keliru, tanyakan juga ke gurumu."
+- Jawaban chatbot dibuat model bahasa dan bisa keliru; fitur **Sederhanakan** membantu menjelaskan ulang bila kalimat masih terasa sulit.
 
-## 7. Fitur MVP (sesudah ADR-053)
+## 7. Fitur MVP (sesudah ADR-053 & ADR-056)
 
 | # | Fitur | Rute | Ringkasan perilaku |
 |---|---|---|---|
-| F1 | Tanya LUNAR | `/chat`, `/chat/:sessionId` | Layar kosong dengan maskot harimau dan "Mau belajar apa hari ini?" plus pertanyaan cepat. Setelah pesan pertama, halaman yang sama menjadi percakapan. Judul sesi diambil dari pertanyaan pertama. Jawaban: teks, TTS (opsional), animasi isyarat. |
+| F1 | Tanya LUNAR | `/chat`, `/chat/:sessionId` | Layar kosong dengan maskot harimau dan "Mau belajar apa hari ini?" plus pertanyaan cepat. Setelah pesan pertama, halaman yang sama menjadi percakapan. Judul sesi diambil dari pertanyaan pertama. Jawaban: teks sederhana + animasi isyarat karakter ilustrasi dengan seekbar & layar penuh + tombol **Salin**, **Sederhanakan**, dan **Caption**. |
 | F2 | Pakai isyarat | di kolom chat | Kamera → auto-capture → pengenalan kata. Kata ≥ 0,85 langsung ditambahkan ke kolom pesan, 0,60–0,84 minta konfirmasi, < 0,60 "Isyarat belum dikenali". Beberapa kata bisa disusun, ditambah ketikan, lalu dikirim. Pesan ditandai `input_mode = sign`. |
 | F3 | Unggah PDF | tombol + di kolom chat | PDF berbasis teks, ≤ 5 MB, ≤ 10 halaman, maks. 5 file per percakapan. Teks dipakai sebagai konteks jawaban. Scan/foto ditolak dengan pesan jelas. UI mengingatkan agar tidak mengunggah data pribadi. |
-| F4 | Video Pelajaran | `/video`, `/video/:id` | Daftar video dengan "Lanjutkan menonton" di atas, cari, filter mapel, nama guru per video. Halaman tonton: chat samping berukuran tetap, caption gaya YouTube (S/M/L, kata aktif disorot), bab di progress bar, kecepatan, ulangi bagian, layar penuh dengan panel "Tanya". |
-| F5 | Tanya per detik | di halaman video | Pertanyaan dikirim bersama `{id video, bagian, detik}`. Backend menambahkan transkrip bagian itu dan bagian sekitarnya ke prompt. Riwayat menampilkan chip waktu (mis. "02:15"). |
+| F4 | Konten Pembelajaran | `/video`, `/video/:id` | Katalog **Konten LUNAR ✓** dengan pencarian, filter mapel, detail materi (tombol **Rangkum materi ini** ke chat), dan pratinjau tab **Komunitas** (*segera hadir*). Halaman tonton: chat samping berukuran tetap, caption gaya YouTube (S/M/L, kata aktif disorot kuning), bab di progress bar, kecepatan, ulangi bagian, layar penuh dengan panel "Tanya". |
+| F5 | Tanya per detik | di halaman video | Pertanyaan dikirim bersama `{id video, bagian, detik}`. Backend menambahkan transkrip bagian itu dan bagian sekitarnya ke prompt. Riwayat menampilkan chip waktu (mis. "02:06") dan tombol **Lihat lagi di mm:ss**. |
 | F6 | Materi Saya | `/materi` | PDF yang pernah diunggah (dari akun), video yang disimpan, video terakhir dibuka. |
-| F7 | Riwayat | `/riwayat` | Semua percakapan: buka, ganti nama, hapus. Sidebar menampilkan 4 terbaru + "Lihat semua". |
-| F8 | Profil + Kegiatan belajarku | `/profil` | Data siswa dari sekolah (hanya baca), pengaturan tampilan (ukuran teks, kecepatan isyarat, putar otomatis, suara, caption), dan ringkasan 7 hari: video ditonton, pertanyaan dari video, PDF diunggah. |
-| F9 | Login NIS | `/login` | NIS + password. Siswa yang sesinya masih valid langsung masuk. Kotak "Akun siap pakai" hanya tampil bila env demo diisi (jangan untuk build publik). |
+| F7 | Riwayat | `/riwayat` | Semua percakapan: cari judul, buka, ganti nama, hapus. Sidebar menampilkan pencarian cepat + 4 terbaru + "Lihat semua". |
+| F8 | Profil + Kegiatan belajarku | `/profil` | Identitas pengguna (edit **nama panggilan** *inline* tersinkron ke beranda & sidebar), pengaturan tampilan (ukuran teks, ukuran caption, tampilkan caption, kecepatan animasi isyarat, putar isyarat otomatis), dan ringkasan 7 hari: video selesai, sedang ditonton, pertanyaan dari video, PDF diunggah. |
+| F9 | Masuk & Daftar Mandiri | `/login`, `/daftar` | Login Email + Password, daftar mandiri (Nama Lengkap, Email, No. Telp, Password), dan dialog Lupa Password. Siswa yang sesinya masih valid langsung masuk. Kotak "Akun siap pakai" hanya tampil bila env demo diisi. |
 | F10 | Kiosk kelas (tersembunyi) | `/kiosk` | Satu perangkat, dua arah: isyarat siswa → teks/suara untuk guru; suara/ketikan guru → animasi isyarat. Tidak ada di menu. |
 
 Tidak ada mode demo di aplikasi siswa. Bila Backend mati, UI menampilkan "Tidak bisa terhubung ke server". Simulator `?dev=1` hanya ada di dalam kiosk.
@@ -246,9 +246,9 @@ Aturan teknis privasi: [SYSTEM_DESIGN.md §12](SYSTEM_DESIGN.md#12-privasi).
 
 ## 18. Roadmap
 
-1. **Sekarang (MVP):** chat-first, SD kelas 4–6, 43 kata, video katalog statis, PDF teks.
-2. **Berikutnya:** endpoint/UI sekolah untuk mendaftarkan siswa dan reset password; tabel materi/CMS menggantikan katalog ganda FE/BE; kebijakan retensi; laporan model 43 kata.
-3. **Lanjutan:** akun guru dan pengiriman materi ke kelas; SMP–SMA/SMK; `matchText` dari tim Modeling; perluasan kosakata bersama komunitas Tuli; OCR (perlu keputusan privasi); eksplorasi multi-dialek.
+1. **Sekarang (MVP):** chat-first, SD kelas 4–6, 43 kata, Konten Pembelajaran terkurasi (`Konten LUNAR ✓`), tanya per detik, PDF teks, akun mandiri email/no. telp.
+2. **Berikutnya (Ekosistem Pengajar):** kontributor guru & pengajar terverifikasi berbagi materi di tab **Komunitas** dengan tinjauan Tim LUNAR dan apresiasi **LUNAR Points**; tabel materi/CMS menggantikan katalog ganda FE/BE; kebijakan retensi; laporan model 43 kata.
+3. **Lanjutan:** paket sekolah inklusi & SLB (akun kelas & pengiriman materi); SMP–SMA/SMK; `matchText` dari tim Modeling; perluasan kosakata bersama komunitas Tuli; OCR (perlu keputusan privasi); eksplorasi multi-dialek.
 
 ## 19. Open Items
 

@@ -85,7 +85,7 @@ Prinsip runtime:
 | clsx | 2.1.1 |
 | tailwind-merge | 3.7.0 |
 | gsap / @gsap/react | 3.15.0 / 2.1.2 (khusus landing page) |
-| @fontsource-variable/plus-jakarta-sans | 5.3.0 |
+| @fontsource-variable/lexend | 5.3.0 |
 | vite | 8.3.1 |
 | @vitejs/plugin-react | 6.1.1 |
 | @vitejs/plugin-basic-ssl | 2.3.0 |
@@ -162,17 +162,17 @@ Folder `backend/`, `ml/`, dan `Database/` sengaja tetap bersebelahan: `pip insta
 | Path | Isi |
 |---|---|
 | `src/App.tsx` | Router (lihat §4) |
-| `src/layout/AppShell.tsx` | Sidebar (Tanya LUNAR, Video Pelajaran, Materi Saya, 4 chat terbaru, kartu profil); bar atas + tab bawah di layar kecil |
-| `src/pages/` | `ChatPage`, `VideoListPage`, `VideoWatchPage`, `MateriSayaPage`, `HistoryPage`, `ProfilePage` |
-| `src/features/chatbot/` | `chat.service.ts` (API chat), `useChat.ts`, `sessions.store.ts` (daftar sesi di memori), `ChatParts.tsx` (composer, tombol Pakai isyarat, unggah), `SignCapture.tsx`, `AnswerSign.tsx` (jawaban → animasi), `prompts.ts` |
+| `src/layout/AppShell.tsx` | Sidebar (Tanya LUNAR, Konten Pembelajaran, Materi Saya, pencarian + 4 chat terbaru, kartu profil); bar atas + tab bawah (`Tanya`, `Konten`, `Materi`) di layar kecil |
+| `src/pages/` | `ChatPage`, `VideoListPage` (tab Konten LUNAR & Komunitas + detail materi + Rangkum materi), `VideoWatchPage`, `MateriSayaPage`, `HistoryPage`, `ProfilePage` (termasuk edit nama panggilan *inline* & pengaturan aksesibilitas) |
+| `src/features/chatbot/` | `chat.service.ts` (API chat), `useChat.ts`, `sessions.store.ts` (daftar sesi di memori), `ChatParts.tsx` (composer, Pakai isyarat, unggah PDF, tombol `Salin`, `Sederhanakan`, `Caption`), `SignCapture.tsx`, `AnswerSign.tsx` (jawaban → animasi + seekbar), `DeleteChatDialog.tsx`, `prompts.ts` |
 | `src/features/sign-to-text/` | `autoCapture.ts` (state machine murni), `useAutoCapture.ts`, `useHandTracking.ts` (MediaPipe), `landmarkFrame.ts`, `useSignFlow.ts` + `SignPanel.tsx` (kiosk), `synthetic.ts`/`replay.ts` (simulator) |
 | `src/features/speech-to-sign/` | Alur guru di kiosk: `useSpeechFlow.ts`, `SpeechPanel.tsx`, `SignVideo.tsx` |
-| `src/features/skeleton-animation/` | `SkeletonPlayer.tsx`, `registry.ts`, `sentence.ts`, `generated.ts` (gerakan buatan), `data/label_00..42.json` (rekaman) |
-| `src/components/mascot/TigerMascot.tsx` | Maskot di layar kosong Tanya LUNAR |
-| `src/components/ui/sign-caption.tsx` | Caption gaya YouTube (S/M/L, kata aktif disorot) |
-| `src/components/ui/`, `components/materi/`, `components/kiosk/` | Primitif UI, kartu video, komponen kiosk |
-| `src/auth/` | `AuthContext.tsx`, `RequireAuth.tsx`, `auth.service.ts`, `token.ts` (refresh), `session.store.ts`, `auth.config.ts`, `login/LoginPage.tsx` |
-| `src/state/` | `materi.store.ts`, `SettingsContext.tsx`, `conversation.store.ts` (kiosk), `KioskContext.tsx` |
+| `src/features/skeleton-animation/` | `SkeletonPlayer.tsx` (karakter manusia ilustrasi), `skeleton.config.ts`, `processSkeleton.ts`, `registry.ts`, `sentence.ts`, `generated.ts` (gerakan buatan), `data/label_00..42.json` (rekaman 43 kata) |
+| `src/components/mascot/TigerMascot.tsx` | Maskot harimau interaktif di beranda Tanya LUNAR |
+| `src/components/ui/sign-caption.tsx` | Caption gaya YouTube (S/M/L, kata aktif disorot kuning) |
+| `src/components/ui/`, `components/materi/`, `components/kiosk/` | Primitif UI, `MateriVisuals.tsx`, komponen kiosk |
+| `src/auth/` | `AuthContext.tsx`, `RequireAuth.tsx`, `auth.service.ts` (login email, daftar mandiri, lupa password, refresh, logout), `token.ts`, `session.store.ts`, `auth.config.ts`, `login/LoginPage.tsx`, `login/ForgotPasswordDialog.tsx` |
+| `src/state/` | `materi.store.ts`, `nickname.store.ts` (nama panggilan lokal tersinkron), `SettingsContext.tsx`, `conversation.store.ts` (kiosk), `KioskContext.tsx` |
 | `src/services/` | `matching.service.ts` (`/api/match/sign`, mock untuk simulator), `textMatch.ts` (tokenizer ADR-050), `logs.service.ts` |
 | `src/data/` | `materi.ts` (katalog video), `vocabulary.ts` (dari `label_map.json`), `phrases.mock.ts` (frasa cepat kiosk) |
 | `src/config/` | `app.config.ts`, `capture.config.ts`, `confidence.config.ts` |
@@ -181,20 +181,21 @@ Folder `backend/`, `ml/`, dan `Database/` sengaja tetap bersebelahan: `pip insta
 
 ### 3.4 `Frontend/src/landing/` (landing page)
 
-Halaman pemasaran di rute `/`: `LandingPage.tsx`, `components/landing/*` (Hero, Why, HowItWorks, Chatbot, Vocabulary, Confidence, ForSchools, dsb.), `components/ui/*`, `lib/gsap.ts`, `config/links.ts` (tautan ke `/login`). Dimuat lazy sehingga GSAP tidak ikut di halaman aplikasi. Gaya landing (`wrap`, `shadow-phone`, `.mf-*`) ada di `src/index.css`. Tidak memanggil Backend.
+Halaman pemasaran di rute `/`: `LandingPage.tsx`, `components/landing/*` (`Nav`, `Hero`, `HeroShowcase`, `FeatureStrip`, `Why`, `Chatbot`, `HowItWorks`, `Confidence` dengan daftar kosakata terintegrasi yang bisa dicari, `ForEveryone`, `Closing`), `components/ui/*`, `lib/gsap.ts`, `config/links.ts` (tautan ke `/login` dan `/daftar`). Dimuat lazy sehingga GSAP tidak ikut di halaman aplikasi. Gaya landing (`wrap`, `shadow-phone`, `.mf-*`) ada di `src/index.css`. Tidak memanggil Backend.
 
 ## 4. Rute FE (`Frontend/src/App.tsx`)
 
 | Rute | Halaman | Akses |
 |---|---|---|
 | `/` | `LandingPage` (landing page) | publik |
-| `/login` | `LoginPage`; setelah masuk ke `/chat` | publik |
+| `/login` | `LoginPage` (masuk Email + Password, tab daftar `?mode=register`, dialog lupa password); setelah masuk ke `/chat` | publik |
+| `/daftar`, `/register` | redirect ke `/login?mode=register` | publik |
 | `/chat/:sessionId?` | `ChatPage` (satu rute agar tidak di-mount ulang saat sesi dibuat) | siswa |
-| `/video` | `VideoListPage` | siswa |
+| `/video` | `VideoListPage` (Konten Pembelajaran: Konten LUNAR & Komunitas) | siswa |
 | `/video/:id` | `VideoWatchPage` | siswa |
 | `/materi` | `MateriSayaPage` | siswa |
 | `/riwayat` | `HistoryPage` | siswa |
-| `/profil` | `ProfilePage` (termasuk pengaturan) | siswa |
+| `/profil` | `ProfilePage` (identitas, edit nama panggilan, aktivitas 7 hari, pengaturan aksesibilitas) | siswa |
 | `/kiosk` | `KioskScreen` (tidak ada di menu) | siswa |
 | `/materi/:id` | redirect ke `/video/:id` | siswa |
 | `/pengaturan` | redirect ke `/profil` | siswa |
@@ -207,9 +208,10 @@ Logo di aplikasi kembali ke `/` (landing). Rute "siswa" dibungkus `RequireAuth` 
 
 | Kunci / store | Lokasi | Isi | Masa hidup |
 |---|---|---|---|
-| `lunar.siswa.session` | localStorage (`auth/session.store.ts`, `auth.config.ts`) | Profil yang tampil, access token, refresh token, `expiresAt`, `lastActiveAt`, id sesi. Tanpa password. | Sampai logout, refresh ditolak, atau idle 14 hari |
-| `lunar.settings` | localStorage (`state/SettingsContext.tsx`) | `textScale`, `signSpeed`, `autoPlaySign`, `autoSpeak`, `captions`, `captionSize` | Per perangkat |
+| `lunar.siswa.session` | localStorage (`auth/session.store.ts`, `auth.config.ts`) | Profil yang tampil (`email`, `phone`, `name`, dst.), access token, refresh token, `expiresAt`, `lastActiveAt`, id sesi. Tanpa password. | Sampai logout, refresh ditolak, atau idle 14 hari |
+| `lunar.settings` | localStorage (`state/SettingsContext.tsx`) | `textScale`, `signSpeed`, `autoPlaySign`, `captions`, `captionSize` | Per perangkat |
 | `lunar.materi.<studentId>` | localStorage (`state/materi.store.ts`) | `saved` (id video), `recent`, `progress` per video (bagian, selesai), `chats` (id sesi chat per video) | Per siswa per perangkat |
+| `lunar.nickname.<studentId>` | localStorage (`state/nickname.store.ts`) | Nama panggilan pilihan siswa (sinkron antara Profil, Sidebar, dan Beranda Chat) | Per siswa per perangkat |
 | `sessionsStore` | memori (`features/chatbot/sessions.store.ts`) | Daftar sesi dari `GET /api/chat/sessions` untuk sidebar, Riwayat, chat | Sampai reload |
 | `conversationStore` | memori (`state/conversation.store.ts`) | Riwayat kiosk (maks 50 item) | Sampai reload, tidak pernah ke storage |
 | Buffer capture | memori (`autoCapture.ts`) | Frame landmark rekaman aktif | Dibuang tiap selesai |
@@ -248,11 +250,12 @@ Hanya nama dan arti. Nilai nyata tidak pernah di-commit; `backend/.env.example` 
 |---|---|
 | `VITE_API_BASE_URL` | Kosong atau `/` = origin sama via proxy; URL penuh = panggil Backend langsung (butuh CORS) |
 | `VITE_DEVICE_ID` | UUID baris `devices` untuk `/api/match/sign` (default = device demo `LOCAL_DEV_DB`) |
-| `VITE_DEMO_NIS`, `VITE_DEMO_PASSWORD` | Kotak "Akun siap pakai" di login; kosong = tersembunyi. Jangan diisi untuk build publik |
+| `VITE_AUTH_MODE` | Mode otentikasi (`api` = backend asli) |
+| `VITE_DEMO_EMAIL`, `VITE_DEMO_PASSWORD` | Kotak "Akun siap pakai" di login; kosongkan untuk build publik |
 | `VITE_HTTPS` | `1` = dev server HTTPS self-signed + listen di LAN (`npm run dev:https`) |
 | `VITE_BACKEND_URL` | Target proxy `/api` saat dev (default `http://127.0.0.1:8000`) |
 
-Landing page tidak punya variabel sendiri: tautan masuk selalu `/login` di domain yang sama.
+Landing page tidak punya variabel sendiri: tautan masuk dan daftar selalu `/login` & `/daftar` di domain yang sama.
 
 ## 7. Menjalankan Secara Lokal
 
@@ -322,7 +325,7 @@ Belum di-deploy; konfigurasinya sudah disiapkan.
 | Bagian | Cara | Variabel |
 |---|---|---|
 | Backend + Modeling | `Dockerfile` di root repo (Python 3.12, model dimuat in-process, `serve.py` di `$PORT`, healthcheck `/api/health`). Railway/Render mendeteksinya otomatis. | isi `backend/.env` (tanpa `LOCAL_DEV_DB`) + `CORS_ALLOW_ORIGINS=<URL frontend>` |
-| Frontend | Vercel (`vercel.json`): build Vite, fallback SPA, `/api/*` di-rewrite ke Backend. Ganti `GANTI-DENGAN-URL-BACKEND` di `vercel.json` dengan URL Backend. | `VITE_API_BASE_URL=/`, `VITE_DEVICE_ID`, opsional `VITE_DEMO_NIS`/`VITE_DEMO_PASSWORD` (build-time) |
+| Frontend | Vercel (`vercel.json`): build Vite, fallback SPA, `/api/*` di-rewrite ke Backend. Pastikan URL tujuan di `vercel.json` mengarah ke domain Backend. | `VITE_API_BASE_URL=/`, `VITE_DEVICE_ID`, `VITE_AUTH_MODE=api`, opsional `VITE_DEMO_EMAIL`/`VITE_DEMO_PASSWORD` (build-time) |
 
 Variabel `VITE_*` dibaca saat build, jadi perubahan nilainya butuh redeploy. `.dockerignore` mencegah `.env` dan `.venv` masuk image.
 
@@ -331,7 +334,7 @@ Catatan umum:
 - **Backend:** CPython 3.12; tanpa Docker, install dari root repo dalam satu environment: `pip install -r ml/requirements.txt` (atau subset runtime), `pip install -e ml`, `pip install -e backend`. Jalankan `uvicorn app.main:app` dari `backend/`. Variabel dari secret store, bukan file `.env`. `LOCAL_DEV_DB` jangan di-set. Set `CORS_ALLOW_ORIGINS` ke origin FE produksi (tidak perlu bila FE memakai rewrite `/api` Vercel).
 - **Database:** terapkan semua `Database/migrations` berurutan; butuh skema `auth` Supabase. Gunakan session pooler. Backend membuka satu koneksi per request (tanpa pool).
 - **Storage:** bucket `sign-references` dibuat private di proyek Supabase; Backend tidak membuat bucket.
-- **FE:** `npm run build` (menjalankan `copy-mediapipe` sehingga WASM dan model `.task` disajikan lokal, tanpa CDN). Proxy Vite hanya untuk dev: di produksi `/api` lewat rewrite Vercel, atau set `VITE_API_BASE_URL` ke URL Backend + CORS. Kosongkan `VITE_DEMO_NIS`/`VITE_DEMO_PASSWORD` untuk build publik.
+- **FE:** `npm run build` (menjalankan `copy-mediapipe` sehingga WASM dan model `.task` disajikan lokal, tanpa CDN). Proxy Vite hanya untuk dev: di produksi `/api` lewat rewrite Vercel, atau set `VITE_API_BASE_URL` ke URL Backend + CORS. Kosongkan `VITE_DEMO_EMAIL`/`VITE_DEMO_PASSWORD` untuk build publik.
 - **Keamanan:** endpoint publik (`/api/match/sign`, `/api/logs`, `/api/phrases`, `/api/health`, heartbeat) tidak berautentikasi; batasi dengan jaringan/rate limit di reverse proxy bila diekspos luas. Belum ada rate limit login di Backend.
 
 ## 10. Catatan Integrasi
