@@ -25,7 +25,7 @@ export default defineConfig({
     host: useHttps,
     port: 5174,
     strictPort: true,
-    proxy: { '/api': { target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000', changeOrigin: true } },
+    proxy: { '/api': { target: process.env.VITE_BACKEND_URL || 'https://sesvents-lunar-backend-model-ohba.vercel.app', changeOrigin: true } },
   },
   preview: { port: 4174, strictPort: true },
 });
