@@ -29,16 +29,30 @@ export const SKELETON = {
   showFace: true,
   colors: {
     /** Mata & mulut. */
-    face: '#3A2416',
-    /** Kepala: warna kulit (panduan UI, peraga isyarat di latar gelap). */
-    head: '#F2CDA8',
-    /** Telinga, sedikit lebih gelap dari kepala. */
+    face: '#2B1E16',
+    /** Rambut karakter (selaras SignerAvatar). */
+    hair: '#4A2E1F',
+    /** Kepala & telapak: warna kulit hangat. */
+    head: '#F1D5C1',
+    /** Leher & bayangan kulit halus. */
+    neck: '#E3B99B',
+    /** Telinga, sedikit lebih teduh dari kepala. */
     ear: '#E2B48A',
-    /** Badan: biru tua. JANGAN sama dengan latar panel (#2A2520), nanti tak terlihat. */
+    /** Lengan bawah warna kulit. */
+    forearm: '#ECC8AE',
+    /** Garis tepi tipis agar lengan/jari tetap terpisah jelas saat menyilang di depan wajah/badan. */
+    outline: '#241A14',
+    /** Badan bawaan: biru tua. JANGAN sama dengan latar panel (#2A2520), nanti tak terlihat. */
     body: '#2B3A55',
-    arm: '#3E5378',
+    arm: '#36496B',
+    collar: '#3E5378',
     bone: '#FFFFFF',
     joint: '#FFFFFF',
     tip: '#F28A2E',
+  },
+  tones: {
+    brand: { body: '#2B3A55', sleeve: '#36496B', collar: '#465D86' },
+    ink: { body: '#35302B', sleeve: '#433D37', collar: '#574F47' },
+    violet: { body: '#2E5A9C', sleeve: '#396BB5', collar: '#5282CA' },
   },
 } as const;

@@ -8,7 +8,7 @@
  *  - processSkeleton.ts  perapian data (kiri/kanan, celah, tangan istirahat)
  *  - SkeletonPlayer.tsx  komponen yang menggambar animasinya
  */
-export { SkeletonPlayer } from './SkeletonPlayer';
+export { SkeletonPlayer, useClipsDurationSec } from './SkeletonPlayer';
 export { getSkeletonClip } from './registry';
 export { generatedClip } from './generated';
 export { clipsForSegments, signWordsForText, type SignWord } from './sentence';

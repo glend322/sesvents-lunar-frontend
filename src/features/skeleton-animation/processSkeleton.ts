@@ -112,7 +112,7 @@ export function processSkeleton(clip: SkeletonClip): ProcessedClip {
   for (const fr of frames) {
     fr.pose.forEach(add);
     fr.face.forEach(add);
-    add([fr.pose[P.nose][0], fr.pose[P.nose][1] - shoulderW * 0.6]); // puncak kepala
+    add([fr.pose[P.nose][0], fr.pose[P.nose][1] - shoulderW * 0.74]); // puncak rambut kepala
     for (const h of fr.hands) if (h && h.alpha === 1) h.pts.forEach(add);
   }
   const pad = SKELETON.paddingShoulders * shoulderW;
@@ -232,7 +232,7 @@ export function buildTimeline(clips: SkeletonClip[], transitionMs = SKELETON.tra
   const ys: number[] = [];
   for (const fr of frames) {
     for (const q of [...fr.pose, ...fr.face]) xs.push(q[0]), ys.push(q[1]);
-    ys.push(fr.pose[P.nose][1] - S * 0.6); // puncak kepala
+    ys.push(fr.pose[P.nose][1] - S * 0.74); // puncak rambut kepala
     for (const h of fr.hands) if (h && h.alpha === 1) for (const q of h.pts) xs.push(q[0]), ys.push(q[1]);
   }
   const pct = (v: number[], p: number) => {

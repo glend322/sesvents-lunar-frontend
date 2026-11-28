@@ -76,7 +76,7 @@ export function Hero() {
 
           <div className="js-hero-rest">
             <p className="mt-5 max-w-[420px] text-[15.5px] leading-relaxed text-brand-800 md:text-[16.5px]">
-              Akses konten pembelajaran dalam bahasa isyarat BISINDO dan takarir interaktif. Dirancang ramah untuk semua orang, termasuk teman-teman Tuli.
+              Akses konten pembelajaran dalam bahasa isyarat BISINDO dan caption interaktif. Dirancang ramah untuk semua orang, termasuk teman-teman Tuli.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-2.5">

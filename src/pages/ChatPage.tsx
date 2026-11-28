@@ -67,7 +67,11 @@ export default function ChatPage() {
     if (st.autoSend) void send(st.prompt, 'text');
     else {
       setDraft(st.prompt);
-      inputRef.current?.focus();
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        const len = st.prompt?.length ?? 0;
+        inputRef.current?.setSelectionRange(len, len);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

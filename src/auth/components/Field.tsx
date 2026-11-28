@@ -1,4 +1,4 @@
-import { useId, useState, type InputHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useId, useState, type InputHTMLAttributes, type ReactNode } from 'react';
 import { CircleAlert, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,8 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> & {
   password?: boolean;
   /** Tampilkan tombol mata untuk melihat password (opsional). */
   showPasswordToggle?: boolean;
+  /** Durasi (ms) password terlihat sebelum otomatis disembunyikan lagi (default 3000 ms). */
+  passwordRevealMs?: number;
   /** Teks petunjuk di bawah input (mis. "Minimal 8 huruf atau angka."). */
   hint?: ReactNode;
   /** Pesan kesalahan khusus field ini. */
@@ -25,6 +27,7 @@ export function Field({
   icon,
   password = false,
   showPasswordToggle = false,
+  passwordRevealMs = 3000,
   hint,
   error,
   className,
@@ -35,6 +38,12 @@ export function Field({
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
   const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!visible || !passwordRevealMs) return;
+    const timer = window.setTimeout(() => setVisible(false), passwordRevealMs);
+    return () => window.clearTimeout(timer);
+  }, [visible, passwordRevealMs]);
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -77,7 +86,7 @@ export function Field({
             aria-pressed={visible}
             className="absolute right-2 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-[10px] text-muted transition-colors hover:bg-sand hover:text-ink"
           >
-            {visible ? <EyeOff className="size-[1.1rem]" aria-hidden="true" /> : <Eye className="size-[1.1rem]" aria-hidden="true" />}
+            {visible ? <Eye className="size-[1.1rem]" aria-hidden="true" /> : <EyeOff className="size-[1.1rem]" aria-hidden="true" />}
           </button>
         )}
       </div>

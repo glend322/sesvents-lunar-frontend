@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -16,7 +16,7 @@ import {
   RotateCcw,
   RotateCw,
   Settings2,
-  Volume2,
+  Sparkles,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
@@ -27,7 +27,6 @@ import { clock, durationSec, materiById, sectionAt, sectionSec, sectionStart, su
 import { Bubble, Composer, ErrorNote, simplifyPrompt, Typing } from '@/features/chatbot/ChatParts';
 import { useChat } from '@/features/chatbot/useChat';
 import { signWordsForText, SkeletonPlayer } from '@/features/skeleton-animation';
-import { useSpeechOut } from '@/hooks/useSpeechOut';
 import { useMateriStore } from '@/state/materi.store';
 import { CAPTION_SIZE_LABEL, useSettings, type CaptionSize } from '@/state/SettingsContext';
 import { cn } from '@/lib/utils';
@@ -35,6 +34,9 @@ import { cn } from '@/lib/utils';
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5] as const;
 /** Besar lompatan tombol ulangi / maju (detik). */
 const SKIP_SEC = 10;
+const TIMELINE_STEPS = 1000;
+
+type WatchLocationState = { autoPlay?: boolean } | null;
 
 /**
  * Tonton video + tanya per detik (ADR-053 D3). Kiri: pemutar (caption gaya YouTube, bab di progress
@@ -64,16 +66,19 @@ function Watch({ m }: { m: Materi }) {
   const { profile } = useAuth();
   const store = useMateriStore(profile!.id);
   const settings = useSettings();
-  const tts = useSpeechOut();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const initialAutoPlay = Boolean((location.state as WatchLocationState)?.autoPlay);
 
   // ---------------------------------------------------------------- pemutar
   const startAt = store.progress[m.id] && !store.progress[m.id].done ? store.progress[m.id].section : 0;
   const [active, setActive] = useState(startAt);
-  const [started, setStarted] = useState(false);
-  const [playing, setPlaying] = useState(false);
+  const [started, setStarted] = useState(initialAutoPlay);
+  const [playing, setPlaying] = useState(initialAutoPlay);
+  const [scrubbing, setScrubbing] = useState(false);
   const [run, setRun] = useState(0);
   const [progress, setProgressPct] = useState(0);
-  /** Posisi awal pemutaran di dalam bagian (0..1): dipakai saat melanjutkan & melompat ±10 detik. */
+  /** Posisi awal pemutaran di dalam bagian (0..1): dipakai saat melanjutkan & melompat ±10 detik / seekbar. */
   const [startFrac, setStartFrac] = useState(0);
   const [word, setWord] = useState(-1);
   const [speed, setSpeed] = useState<number>(settings.signSpeed);
@@ -82,20 +87,24 @@ function Watch({ m }: { m: Materi }) {
   const [fullscreen, setFullscreen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
   const stage = useRef<HTMLDivElement>(null);
+  const chatAsideRef = useRef<HTMLElement>(null);
+  const wasPlayingBeforeScrub = useRef(false);
 
   const section = m.sections[active];
   const total = durationSec(m);
   const tNow = sectionStart(m, active) + progress * sectionSec(m);
-  const words = useMemo(() => (playing ? signWordsForText(section.caption) : []), [section, playing]);
+  const words = useMemo(() => (started || playing ? signWordsForText(section.caption) : []), [section, started, playing]);
   const clips = useMemo(() => words.map((w) => w.clip), [words]);
-  const captionWords = useMemo(() => (playing ? words.map((w) => w.text) : section.caption.split(/\s+/).filter(Boolean)), [playing, words, section]);
+  const captionWords = useMemo(() => (started || playing ? words.map((w) => w.text) : section.caption.split(/\s+/).filter(Boolean)), [started, playing, words, section]);
 
   useEffect(() => {
     store.markOpened(m.id);
+    if (initialAutoPlay) {
+      store.setProgress(m.id, startAt, false);
+      navigate(location.pathname, { replace: true, state: null });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.id]);
-  const cancelSpeech = tts.cancel;
-  useEffect(() => cancelSpeech, [cancelSpeech]);
 
   const go = useCallback(
     (i: number, autoplay = true, frac = 0) => {
@@ -112,17 +121,17 @@ function Watch({ m }: { m: Materi }) {
     [m.id, store],
   );
 
-  /** Lompat ke detik tertentu: bagian yang memuatnya, diputar dari posisi detik itu. */
+  /** Lompat ke detik tertentu: bagian yang memuatnya, diputar/ditahan dari posisi detik itu. */
   const seek = useCallback(
-    (t: number) => {
+    (t: number, autoplay = true) => {
       const at = Math.min(total - 0.05, Math.max(0, t));
       const i = sectionAt(m, at);
-      go(i, true, (at - sectionStart(m, i)) / sectionSec(m));
+      go(i, autoplay, (at - sectionStart(m, i)) / sectionSec(m));
     },
     [go, m, total],
   );
   /** Tombol −10 / +10 detik (tNow berubah tiap frame, jadi tidak perlu di-memo). */
-  const jump = (delta: number) => seek(tNow + delta);
+  const jump = (delta: number) => seek(tNow + delta, playing || !started);
 
   const onDone = () => {
     if (loop) return go(active);
@@ -132,9 +141,16 @@ function Watch({ m }: { m: Materi }) {
     store.setProgress(m.id, active, true);
   };
 
-  const pause = useCallback(() => setPlaying(false), []);
-  // Lanjut dari posisi terakhir; kalau bagiannya sudah habis, mulai bagian itu dari awal.
-  const toggle = () => (playing ? pause() : go(active, true, progress >= 0.999 ? 0 : progress));
+  const pause = useCallback(() => {
+    setStartFrac(progress);
+    setPlaying(false);
+  }, [progress]);
+  // Lanjut dari posisi terakhir; kalau seluruh video sudah habis, ulangi dari bab pertama.
+  const toggle = () => {
+    if (playing) return pause();
+    if (progress >= 0.999 && active >= m.sections.length - 1) return go(0, true, 0);
+    return go(active, true, progress >= 0.999 ? 0 : progress);
+  };
 
   // layar penuh
   useEffect(() => {
@@ -206,18 +222,32 @@ function Watch({ m }: { m: Materi }) {
           {/* ---------- pemutar ---------- */}
           <div ref={stage} className={cn('relative overflow-hidden bg-black', fullscreen ? 'h-full w-full' : 'rounded-[1.5rem]')}>
             <div className={cn('relative w-full', fullscreen ? 'h-full' : 'aspect-video')}>
-              <div className={cn('absolute inset-0 bg-gradient-to-br', playing ? 'from-brand-950 to-brand-900' : m.bg)} />
-              {playing && clips.length > 0 ? (
-                <SkeletonPlayer
-                  clips={clips}
-                  run={run}
-                  speed={speed}
-                  startProgress={startFrac}
-                  onProgress={setProgressPct}
-                  onSegment={setWord}
-                  onDone={onDone}
-                  className="absolute inset-0 size-full p-4 pb-16"
-                />
+              <div className={cn('absolute inset-0 bg-gradient-to-br', started ? 'from-[#2a2520] to-[#1f1b16]' : m.bg)} />
+              {started && clips.length > 0 ? (
+                <>
+                  <SkeletonPlayer
+                    clips={clips}
+                    run={run}
+                    speed={speed}
+                    tone={m.tone}
+                    paused={!playing || scrubbing}
+                    startProgress={startFrac}
+                    onProgress={setProgressPct}
+                    onSegment={setWord}
+                    onDone={onDone}
+                    className="absolute inset-0 size-full p-4 pb-16"
+                  />
+                  {!playing && !scrubbing && (
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      className="absolute inset-0 m-auto grid size-16 place-items-center rounded-full bg-white/95 text-brand-600 shadow-soft transition-transform hover:scale-105"
+                      aria-label={`Lanjutkan ${m.title}`}
+                    >
+                      <Play className="size-7 translate-x-0.5" fill="currentColor" aria-hidden="true" />
+                    </button>
+                  )}
+                </>
               ) : (
                 <>
                   <SignerAvatar tone={m.tone} animated={false} className="absolute inset-x-[30%] bottom-0 top-[8%] opacity-90" />
@@ -233,12 +263,26 @@ function Watch({ m }: { m: Materi }) {
               )}
 
               {settings.captions && (started || playing) && (
-                <SignCaption words={captionWords} active={playing ? word : -1} size={settings.captionSize} big={fullscreen} className="bottom-[16%]" />
+                <SignCaption words={captionWords} active={started ? word : -1} size={settings.captionSize} big={fullscreen} className="bottom-[16%]" />
               )}
 
               {/* kontrol */}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-2.5 pt-10 text-white">
-                <Timeline m={m} t={tNow} total={total} markers={markers} onSeek={seek} />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 pb-2.5 pt-10 text-white">
+                <Timeline
+                  m={m}
+                  t={tNow}
+                  total={total}
+                  markers={markers}
+                  onScrubStart={() => {
+                    wasPlayingBeforeScrub.current = playing || !started;
+                    setScrubbing(true);
+                  }}
+                  onSeek={(targetSec) => seek(targetSec, wasPlayingBeforeScrub.current)}
+                  onScrubEnd={() => {
+                    setScrubbing(false);
+                    if (wasPlayingBeforeScrub.current) setPlaying(true);
+                  }}
+                />
                 <div className="mt-1.5 flex items-center gap-1">
                   <SkipBtn back label={`Ulangi ${SKIP_SEC} detik`} onClick={() => jump(-SKIP_SEC)} disabled={tNow <= 0.05} />
                   <IconBtn label={playing ? 'Jeda' : 'Putar'} onClick={toggle}>
@@ -323,12 +367,20 @@ function Watch({ m }: { m: Materi }) {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant={saved ? 'soft' : 'outline'} onClick={() => store.toggleSaved(m.id)} aria-pressed={saved}>
                 <Bookmark fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Tersimpan' : 'Simpan'}
               </Button>
-              <Button variant="outline" onClick={() => (tts.speaking ? tts.cancel() : void tts.speak(section.caption))} disabled={!tts.supported}>
-                <Volume2 /> {tts.speaking ? 'Hentikan' : 'Dengarkan'}
+              <Button
+                variant="outline"
+                disabled={chat.sending}
+                onClick={() => {
+                  if (playing) pause();
+                  chatAsideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  void chat.send(`Tolong buatkan rangkuman singkat poin-poin penting dari materi ${m.title}.`, 'text', null);
+                }}
+              >
+                <Sparkles /> Rangkum materi ini
               </Button>
             </div>
           </div>
@@ -363,7 +415,11 @@ function Watch({ m }: { m: Materi }) {
         </div>
 
         {/* ---------- chat samping ---------- */}
-        {!fullscreen && <aside className="lg:sticky lg:top-6 lg:h-[min(44rem,calc(100dvh-6rem))]">{panel}</aside>}
+        {!fullscreen && (
+          <aside ref={chatAsideRef} className="lg:sticky lg:top-6 lg:h-[min(44rem,calc(100dvh-6rem))]">
+            {panel}
+          </aside>
+        )}
       </div>
     </div>
   );
@@ -407,28 +463,80 @@ function SkipBtn({ label, onClick, disabled, back = false }: { label: string; on
   );
 }
 
-/** Progress bar dengan pemisah bab (klik = lompat ke bab) dan titik kuning di detik yang pernah ditanyakan. */
-function Timeline({ m, t, total, markers, onSeek }: { m: Materi; t: number; total: number; markers: number[]; onSeek: (t: number) => void }) {
+/**
+ * Seekbar ala YouTube dengan klik/geser bebas ke detik mana pun, pemisah bab visual,
+ * titik kuning penanda pertanyaan, serta tooltip waktu & nama bab saat kursor diarahkan.
+ */
+function Timeline({
+  m,
+  t,
+  total,
+  markers,
+  onScrubStart,
+  onSeek,
+  onScrubEnd,
+}: {
+  m: Materi;
+  t: number;
+  total: number;
+  markers: number[];
+  onScrubStart: () => void;
+  onSeek: (t: number) => void;
+  onScrubEnd: () => void;
+}) {
+  const id = useId();
+  const [hoverPct, setHoverPct] = useState<number | null>(null);
+  const pct = total > 0 ? Math.min(1, Math.max(0, t / total)) : 0;
+  const value = Math.round(pct * TIMELINE_STEPS);
+  const currentSecTitle = m.sections[sectionAt(m, t)]?.title ?? '';
+  const hoverSec = hoverPct !== null ? hoverPct * total : 0;
+  const hoverChapter = hoverPct !== null ? m.sections[sectionAt(m, hoverSec)]?.title : null;
+
+  const sliderStyle = {
+    '--attr-min': 0,
+    '--attr-max': TIMELINE_STEPS,
+    '--control-value': value,
+    '--slider-fill-color': '#E5484D',
+  } as CSSProperties;
+
   return (
-    <div className="group relative flex h-3 items-center">
-      <div className="flex h-1 w-full gap-[3px] transition-[height] group-hover:h-1.5">
-        {m.sections.map((s, i) => {
-          const from = sectionStart(m, i);
-          const len = sectionSec(m);
-          const fill = Math.min(1, Math.max(0, (t - from) / len));
-          return (
-            <button
-              key={s.title}
-              type="button"
-              onClick={() => onSeek(from)}
-              aria-label={`Lompat ke ${s.title}, ${clock(from)}`}
-              className="relative h-full flex-1 overflow-hidden rounded-full bg-white/30"
-            >
-              <span className="absolute inset-y-0 left-0 bg-[#E5484D]" style={{ width: `${fill * 100}%` }} />
-            </button>
-          );
-        })}
-      </div>
+    <div
+      className="group relative flex h-5 items-center"
+      onPointerMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        if (rect.width > 0) {
+          setHoverPct(Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)));
+        }
+      }}
+      onPointerLeave={() => setHoverPct(null)}
+    >
+      <label htmlFor={id} className="sr-only">
+        Posisi waktu video pelajaran
+      </label>
+      <input
+        id={id}
+        type="range"
+        min={0}
+        max={TIMELINE_STEPS}
+        step={1}
+        value={value}
+        aria-valuetext={`${clock(t)} dari ${clock(total)}${currentSecTitle ? `, bagian ${currentSecTitle}` : ''}`}
+        style={sliderStyle}
+        onPointerDown={onScrubStart}
+        onPointerUp={onScrubEnd}
+        onPointerCancel={onScrubEnd}
+        onChange={(e) => onSeek((Number(e.target.value) / TIMELINE_STEPS) * total)}
+        className="lunar-seekbar"
+      />
+      {/* Garis pemisah antar bab (visual saja, tidak menghalangi klik/drag di seekbar) */}
+      {m.sections.slice(1).map((s, idx) => (
+        <span
+          key={s.title}
+          aria-hidden="true"
+          style={{ left: `${((idx + 1) / m.sections.length) * 100}%` }}
+          className="pointer-events-none absolute top-1/2 h-2 w-[2px] -translate-x-1/2 -translate-y-1/2 bg-black/70"
+        />
+      ))}
       {markers.map((x, i) => (
         <span
           key={`${x}-${i}`}
@@ -437,6 +545,16 @@ function Timeline({ m, t, total, markers, onSeek }: { m: Materi; t: number; tota
           aria-hidden="true"
         />
       ))}
+      {hoverPct !== null && total > 0 && (
+        <span
+          aria-hidden="true"
+          style={{ left: `${Math.min(92, Math.max(8, hoverPct * 100))}%` }}
+          className="pointer-events-none absolute -top-7 -translate-x-1/2 whitespace-nowrap rounded-md bg-black/90 px-2 py-0.5 text-[0.6875rem] font-bold tabular-nums text-white shadow"
+        >
+          {clock(hoverSec)}
+          {hoverChapter ? ` · ${hoverChapter}` : ''}
+        </span>
+      )}
     </div>
   );
 }

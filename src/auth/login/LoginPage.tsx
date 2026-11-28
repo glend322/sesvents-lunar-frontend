@@ -383,6 +383,7 @@ export function LoginPage() {
                     <Field
                       label="Password"
                       password
+                      showPasswordToggle
                       value={password}
                       onChange={(e) => onEdit(setPassword, 'password')(e.target.value)}
                       onFocus={() => setTypingField(true)}
@@ -472,6 +473,7 @@ export function LoginPage() {
                     <Field
                       label="Password"
                       password
+                      showPasswordToggle
                       value={password}
                       onChange={(e) => onEdit(setPassword, 'password')(e.target.value)}
                       onFocus={() => setTypingField(true)}
