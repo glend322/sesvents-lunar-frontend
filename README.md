@@ -11,10 +11,17 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![MediaPipe](https://img.shields.io/badge/MediaPipe-Tasks_Vision_1.0-F28A2E)](https://developers.google.com/mediapipe)
-[![Deploy](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)](https://vercel.com/)
+[![Deploy](https://img.shields.io/badge/Live_Demo-lunarsesvent.vercel.app-F28A2E?logo=vercel&logoColor=white)](https://lunarsesvent.vercel.app/)
+[![Backend Repo](https://img.shields.io/badge/Backend_%26_Model-GitHub-181717?logo=github&logoColor=white)](https://github.com/odra27/sesvents-lunar-backend-model)
 
-*Repositori Frontend (Landing Page + Aplikasi Siswa) untuk ekosistem **LUNAR** (SEVENT X 2026).*  
-*Backend & Modeling tersedia di repo terpisah: `Sesvents-Backend-Model`.*
+### Tautan Penting untuk Penilaian & Uji Coba
+
+| Akses | Tautan |
+|---|---|
+| **Live Demo Aplikasi (Vercel)** | [https://lunarsesvent.vercel.app/](https://lunarsesvent.vercel.app/) |
+| **Repositori Backend + Modeling (FastAPI & ONNX)** | [https://github.com/odra27/sesvents-lunar-backend-model](https://github.com/odra27/sesvents-lunar-backend-model) |
+
+*Repositori ini memuat **Frontend (Landing Page + Aplikasi Siswa)** untuk ekosistem **LUNAR** (SEVENT X 2026).*
 
 </div>
 
@@ -183,7 +190,7 @@ Frontend/
 
 ### Prasyarat
 - **Node.js 20+** dan `npm`
-- **Backend LUNAR** berjalan di `http://127.0.0.1:8000` (lihat repo `Sesvents-Backend-Model`)
+- **Backend LUNAR** berjalan di `http://127.0.0.1:8000` (repo: [odra27/sesvents-lunar-backend-model](https://github.com/odra27/sesvents-lunar-backend-model))
 
 ### Langkah Setup
 ```bash
